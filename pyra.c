@@ -1,3 +1,19 @@
+// Pyra-2 is a block cipher intended to be an incredibly fast, SIMD-leveraging
+// encryption algorithm for situations where you want near-realtime
+// access to data on the fly. It is not perfect, and I have no professional
+// background in encryption, but it is fairly secure from what I can tell,
+// and yields high entropy results with a variety of test inputs.
+//
+// Initially Pyra-1 was a feistel cipher, but this is no longer the case,
+// it is inspired by the pharoahs card shuffle and mixes and blends data
+// repeatedly to yield a result that has no discernable pattern even if you were to
+// generally have an idea of what the key is or what operations are being performed.
+//
+// This would likely benefit from some kind of side-channeling prevention, like
+// including some random operations as a wrapper of some sort or during intermission of loops,
+// since there is a lot of data that could be harvested during both encryption
+// and decryption phases of Pyra-2.
+
 #include "immintrin.h"
 #include <stdlib.h>
 #include <stdint.h>
