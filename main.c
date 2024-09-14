@@ -11,6 +11,8 @@ int main()
     //char* key = "abababababababababababababababab";
     char* key = "abababababababababababababababab";
     encrypt((uint8_t*)str, &len, key);
-    printf(str);
+    printf("%s\n", str);
+    decrypt((uint8_t*)str, &len, key);
+    printf("%s\n", str);
     return 0;
 }
