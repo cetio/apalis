@@ -150,7 +150,7 @@ void pyra2_init(struct PYRA* s, uint64_t seed, char* key)
         s->keys[i] = _mm256_shuffle_epi8(s->keys[i], s->tau);
     }
 
-    // Flip the halves of the final 2 keys
+    // Flip the halves of the final 2 keys.
     s->keys[2] = _mm256_permute2x128_si256(s->keys[2], s->keys[2], 1);
     s->keys[3] = _mm256_permute2x128_si256(s->keys[3], s->keys[3], 1);
 
