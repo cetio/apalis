@@ -27,14 +27,18 @@ int main()
     uint8_t* page = aligned_alloc(32, 1024 * 1024 * 4);
     size_t len = 1024 * 1024 * 4;
     char* key = "abababababababababababababababab";
-    struct State* state = aligned_alloc(32, sizeof(struct State));
-    init(state, 0, key);
+// KEY 1: 624760935, 624760935, -746907545, -465710233, 
+// KEY 2: -786163550, 1070799075, -1941974205, -791926161, 
+// KEY 3: 1922898138, -449850410, -952489316, 1100854952, 
+// KEY 4: -853028017, 1252797171, 2023208660, 110419214,
+    struct PYRA* state = aligned_alloc(32, sizeof(struct PYRA));
+    pyra2_init(state, 0, key);
 
     clock_t start, end;
     start = clock();
 
     //aes256_encrypt(page, len, key);
-    encrypt(state, page, &len);
+    pyra2_encrypt(state, page, &len);
 
     end = clock();
     printf("%fs", (double)(end - start) / CLOCKS_PER_SEC);

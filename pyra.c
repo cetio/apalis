@@ -20,149 +20,162 @@
 #include <string.h>
 #include <stdio.h>
 
-struct State
+struct PYRA
 {
     uint64_t seed;
-    __m256i keys[2];
+    __m256i keys[4];
     __m128i phi;
     __m256i tau;
 };
 
-void sb128(struct State* state)
+void pyra2_sb128(struct PYRA* s)
 {
-    for (uint8_t i = 0; i < 8; i++)
-    {
-        uint8_t j = i;
-        uint8_t k = 15 - i;
-        
-        uint8_t mask = -(state->seed & 1);
-        uint8_t r = (j & mask) | (k & ~mask);
-        ((uint8_t*)&state->phi)[j] = r;
-        ((uint8_t*)&state->phi)[k] = r ^ 15;
+    __m128i mask;
 
-        state->seed ^= state->seed << 13;
-        state->seed ^= state->seed >> 7;
-        state->seed ^= state->seed << 17;
+    for (int i = 0; i < 8; i++)
+    {
+        ((uint8_t*)&mask)[i] = -(s->seed & 1);
+        ((uint8_t*)&mask)[15 - i] = -(s->seed & 1);
+
+        s->seed ^= s->seed << 13;
+        s->seed ^= s->seed >> 7;
+        s->seed ^= s->seed << 17;
     }
+
+    __m128i lo = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    __m128i hi = _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+
+    s->phi = _mm_or_si128(_mm_and_si128(mask, lo), _mm_andnot_si128(mask, hi));
 }
 
-void sb256(struct State* state)
+void pyra2_sb256(struct PYRA* s)
 {
-    for (uint8_t i = 0; i < 8; i++)
-    {
-        uint8_t j = i;
-        uint8_t k = 15 - i;
-        
-        uint8_t mask = -(state->seed & 1);
-        uint8_t r = (j & mask) | (k & ~mask);
-        ((uint8_t*)&state->tau)[j] = r;
-        ((uint8_t*)&state->tau)[k] = r ^ 15;
+    __m256i mask;
 
-        state->seed ^= state->seed << 13;
-        state->seed ^= state->seed >> 7;
-        state->seed ^= state->seed << 17;
+    // Generate first lane.
+    for (int i = 0; i < 8; i++)
+    {
+        ((uint8_t*)&mask)[i] = -(s->seed & 1);
+        ((uint8_t*)&mask)[15 - i] = -(s->seed & 1);
+
+        s->seed ^= s->seed << 13;
+        s->seed ^= s->seed >> 7;
+        s->seed ^= s->seed << 17;
     }
 
-    for (uint8_t i = 15; i < 32; i++)
+    // Generate second lane.
+    for (int i = 15; i < 32; i++)
     {
-        uint8_t j = i;
-        uint8_t k = 31 - i;
-        
-        uint8_t mask = -(state->seed & 1);
-        uint8_t r = (j & mask) | (k & ~mask);
-        ((uint8_t*)&state->tau)[j] = r;
-        ((uint8_t*)&state->tau)[k] = r ^ 31;
+        ((uint8_t*)&mask)[i] = -(s->seed & 1);
+        ((uint8_t*)&mask)[31 - i] = -(s->seed & 1);
 
-        state->seed ^= state->seed << 13;
-        state->seed ^= state->seed >> 7;
-        state->seed ^= state->seed << 17;
+        s->seed ^= s->seed << 13;
+        s->seed ^= s->seed >> 7;
+        s->seed ^= s->seed << 17;
     }
+
+    __m256i lo = _mm256_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    __m256i hi = _mm256_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+
+    s->tau = _mm256_or_si256(_mm256_and_si256(mask, lo), _mm256_andnot_si256(mask, hi));
 }
 
-void invsb128(struct State* state)
+void pyra2_invsb128(struct PYRA* s)
 {
-    for (uint8_t i = 0; i < 8; i++)
-    {
-        uint8_t j = i;
-        uint8_t k = 15 - i;
-        
-        uint8_t mask = -(state->seed & 1);
-        uint8_t r = (k & mask) | (j & ~mask);
-        ((uint8_t*)&state->phi)[j] = r;
-        ((uint8_t*)&state->phi)[k] = r ^ 15;
+    __m128i mask;
 
-        state->seed ^= state->seed << 13;
-        state->seed ^= state->seed >> 7;
-        state->seed ^= state->seed << 17;
+    for (int i = 0; i < 8; i++)
+    {
+        ((uint8_t*)&mask)[i] = -(s->seed & 1);
+        ((uint8_t*)&mask)[15 - i] = -(s->seed & 1);
+
+        s->seed ^= s->seed << 13;
+        s->seed ^= s->seed >> 7;
+        s->seed ^= s->seed << 17;
     }
+
+    __m128i lo = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    __m128i hi = _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+
+    s->phi = _mm_or_si128(_mm_and_si128(mask, hi), _mm_andnot_si128(mask, lo));
 }
 
-void invsb256(struct State* state)
+void pyra2_invsb256(struct PYRA* s)
 {
-    for (uint8_t i = 0; i < 8; i++)
-    {
-        uint8_t j = i;
-        uint8_t k = 15 - i;
-        
-        uint8_t mask = -(state->seed & 1);
-        uint8_t r = (k & mask) | (j & ~mask);
-        ((uint8_t*)&state->tau)[j] = r;
-        ((uint8_t*)&state->tau)[k] = r ^ 15;
+    __m256i mask;
 
-        state->seed ^= state->seed << 13;
-        state->seed ^= state->seed >> 7;
-        state->seed ^= state->seed << 17;
+    for (int i = 0; i < 8; i++)
+    {
+        ((uint8_t*)&mask)[i] = -(s->seed & 1);
+        ((uint8_t*)&mask)[15 - i] = -(s->seed & 1);
+
+        s->seed ^= s->seed << 13;
+        s->seed ^= s->seed >> 7;
+        s->seed ^= s->seed << 17;
     }
 
-    for (uint8_t i = 15; i < 32; i++)
+    for (int i = 15; i < 32; i++)
     {
-        uint8_t j = i;
-        uint8_t k = 31 - i;
-        
-        uint8_t mask = -(state->seed & 1);
-        uint8_t r = (k & mask) | (j & ~mask);
-        ((uint8_t*)&state->tau)[j] = r;
-        ((uint8_t*)&state->tau)[k] = r ^ 31;
+        ((uint8_t*)&mask)[i] = -(s->seed & 1);
+        ((uint8_t*)&mask)[31 - i] = -(s->seed & 1);
 
-        state->seed ^= state->seed << 13;
-        state->seed ^= state->seed >> 7;
-        state->seed ^= state->seed << 17;
+        s->seed ^= s->seed << 13;
+        s->seed ^= s->seed >> 7;
+        s->seed ^= s->seed << 17;
     }
+
+    __m256i lo = _mm256_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    __m256i hi = _mm256_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+
+    s->tau = _mm256_or_si256(_mm256_and_si256(mask, hi), _mm256_andnot_si256(mask, lo));
 }
 
-void init(struct State* state, uint64_t seed, char* key)
+void pyra2_init(struct PYRA* s, uint64_t seed, char* key)
 {
-    state->seed = seed | 1;
-    state->keys[0] = _mm256_loadu_si256((__m256i*)key);
-    state->keys[1] = state->keys[0];
+    s->seed = seed | 1;
+    s->keys[0] = _mm256_loadu_si256((__m256i*)key);
+    s->keys[1] = s->keys[0];
+    s->keys[2] = s->keys[0];
+    s->keys[3] = s->keys[0];
 
-    sb256(state);
+    pyra2_sb256(s);
 
     for (int i = 0; i < 4; i++)
     {
-        state->keys[0] = _mm256_xor_si256(state->keys[0], _mm256_slli_epi64(state->keys[0], 13));
-        state->keys[0] = _mm256_xor_si256(state->keys[0], _mm256_srli_epi64(state->keys[0], 7));
-        state->keys[0] = _mm256_xor_si256(state->keys[0], _mm256_slli_epi64(state->keys[0], 17));
+        s->keys[i] = _mm256_xor_si256(s->keys[i == 0 ? 0 : (i - 1)], _mm256_slli_epi64(s->keys[i], 13));
+        s->keys[i] = _mm256_xor_si256(s->keys[i == 0 ? 0 : (i - 1)], _mm256_srli_epi64(s->keys[i], 7));
+        s->keys[i] = _mm256_xor_si256(s->keys[i == 0 ? 0 : (i - 1)], _mm256_slli_epi64(s->keys[i], 17));
 
-        state->keys[0] = _mm256_permute2x128_si256(state->keys[0], state->keys[0], 1);
-        state->keys[0] = _mm256_shuffle_epi8(state->keys[0], state->tau);
+        s->keys[i] = _mm256_permute4x64_epi64(s->keys[i], 0b00100111);
+        s->keys[i] = _mm256_shuffle_epi8(s->keys[i], s->tau);
     }
 
-    for (int i = 0; i < 4; i++)
-    {
-        state->keys[1] = _mm256_xor_si256(state->keys[0], _mm256_slli_epi64(state->keys[1], 13));
-        state->keys[1] = _mm256_xor_si256(state->keys[0], _mm256_srli_epi64(state->keys[1], 7));
-        state->keys[1] = _mm256_xor_si256(state->keys[0], _mm256_slli_epi64(state->keys[1], 17));
+    // Flip the halves of the final 2 keys
+    s->keys[2] = _mm256_permute2x128_si256(s->keys[2], s->keys[2], 1);
+    s->keys[3] = _mm256_permute2x128_si256(s->keys[3], s->keys[3], 1);
 
-        state->keys[1] = _mm256_permute2x128_si256(state->keys[1], state->keys[1], 1);
-        state->keys[1] = _mm256_shuffle_epi8(state->keys[1], state->tau);
-    }
-
-    state->keys[0] = _mm256_xor_si256(state->keys[0], state->keys[1]);
-    //state->keys[1] = _mm256_permute2x128_si256(state->keys[0], state->keys[1], 3);
+    // Finalize the keys by xoring the first 2 by the last 2 keys.
+    s->keys[0] = _mm256_xor_si256(s->keys[0], s->keys[3]);
+    s->keys[1] = _mm256_xor_si256(s->keys[1], s->keys[2]);
 }
 
-int encrypt(struct State* state, uint8_t* data, size_t* len)
+// printf("\nKEY 1: ");
+// for (int i = 0; i < 4; i++)
+//     printf("%d, ", s->keys[0][i]);
+
+// printf("\nKEY 2: ");
+// for (int i = 0; i < 4; i++)
+//     printf("%d, ", s->keys[1][i]);
+
+// printf("\nKEY 3: ");
+// for (int i = 0; i < 4; i++)
+//     printf("%d, ", s->keys[2][i]);
+
+// printf("\nKEY 4: ");
+// for (int i = 0; i < 4; i++)
+//     printf("%d, ", s->keys[3][i]);
+
+int pyra2_encrypt(struct PYRA* s, uint8_t* data, size_t* len)
 {
     if (data == NULL || len == NULL)
         return 0;
@@ -171,18 +184,18 @@ int encrypt(struct State* state, uint8_t* data, size_t* len)
     {
         __m256i v = _mm256_loadu_si256((__m256i*)data + i);
 
-        v = _mm256_sub_epi64(v, state->keys[2]);
-        v = _mm256_xor_si256(v, state->keys[1]);
+        v = _mm256_sub_epi64(v, s->keys[2]);
+        v = _mm256_xor_si256(v, s->keys[1]);
 
-        for (int i = 0; i < state->seed % 8; i++)
-            v = _mm256_shuffle_epi8(v, state->tau);
+        for (int i = 0; i < s->seed % 8; i++)
+            v = _mm256_shuffle_epi8(v, s->tau);
 
-        v = _mm256_add_epi64(v, _mm256_set1_epi64x(state->seed));
-        v = _mm256_add_epi64(v, state->keys[0]);
-        v = _mm256_xor_si256(v, state->keys[3]);
+        v = _mm256_add_epi64(v, _mm256_set1_epi64x(s->seed));
+        v = _mm256_add_epi64(v, s->keys[0]);
+        v = _mm256_xor_si256(v, s->keys[3]);
 
-        for (int i = 0; i < state->seed % 8; i++)
-            v = _mm256_shuffle_epi8(v, state->tau);
+        for (int i = 0; i < s->seed % 8; i++)
+            v = _mm256_shuffle_epi8(v, s->tau);
 
         _mm256_storeu_si256((__m256i*)data + i, v);
     }
@@ -195,7 +208,7 @@ int encrypt(struct State* state, uint8_t* data, size_t* len)
     if (data == NULL || len == NULL)
         return 0;
 
-    const struct state[4] = {
+    const struct s[4] = {
         derive(0x0c0b6479, key),
         derive(0x8ea853bc, key),
         derive(0x79b953f7, key),
@@ -203,10 +216,10 @@ int encrypt(struct State* state, uint8_t* data, size_t* len)
     };
 
     const uint64_t SLOTS[16] = {
-        state[0][0], state[0][1], state[0][2], state[0][3],
-        state[1][0], state[1][1], state[1][2], state[1][3],
-        state[2][0], state[2][1], state[2][2], state[2][3],
-        state[3][0], state[3][1], state[3][2], state[3][3]
+        s[0][0], s[0][1], s[0][2], s[0][3],
+        s[1][0], s[1][1], s[1][2], s[1][3],
+        s[2][0], s[2][1], s[2][2], s[2][3],
+        s[3][0], s[3][1], s[3][2], s[3][3]
     };
 
     uint64_t seed = SLOTS[0];
@@ -224,15 +237,15 @@ int encrypt(struct State* state, uint8_t* data, size_t* len)
         for (int i = 0; i < seed % 8; i++)
             v = _mm256_shuffle_epi8(v, mm32);
 
-        v = _mm256_xor_si256(v, state[3]);
-        v = _mm256_sub_epi64(v, state[0]);
+        v = _mm256_xor_si256(v, s[3]);
+        v = _mm256_sub_epi64(v, s[0]);
         v = _mm256_sub_epi64(v, _mm256_set1_epi64x(seed));
 
         for (int i = 0; i < seed % 8; i++)
             v = _mm256_shuffle_epi8(v, mm32);
 
-        v = _mm256_xor_si256(v, state[1]);
-        v = _mm256_add_epi64(v, state[2]);
+        v = _mm256_xor_si256(v, s[1]);
+        v = _mm256_add_epi64(v, s[2]);
 
         _mm256_store_si256((__m256i*)data + i, v);
     }
