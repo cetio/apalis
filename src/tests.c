@@ -2,9 +2,9 @@
 #include <string.h>
 #include "pyra.h"
 #include <time.h>
-#include "openssl/aes.h"
+//#include "openssl/aes.h"
 
-void aes256_encrypt(uint8_t* page, size_t len, const char* _key) 
+/*void _aes256_encrypt(uint8_t* page, size_t len, const char* _key) 
 {
     AES_KEY key;
     AES_set_encrypt_key(_key, 256, &key);
@@ -20,28 +20,30 @@ void aes256_encrypt(uint8_t* page, size_t len, const char* _key)
 
     for (size_t i = num_blocks & ~3; i < num_blocks; i++)
         AES_ecb_encrypt(page + (i * AES_BLOCK_SIZE), page + (i * AES_BLOCK_SIZE), &key, AES_ENCRYPT);
-}
+}*/
 
 int main()
 {
-    uint8_t* page = aligned_alloc(32, 1024 * 1024 * 4);
-    size_t len = 1024 * 1024 * 4;
+    uint8_t* page = aligned_alloc(32, 1024 * 1024);
+    size_t size = 1024 * 1024;
     char* key = "abababababababababababababababab";
-// KEY 1: 624760935, 624760935, -746907545, -465710233, 
-// KEY 2: -786163550, 1070799075, -1941974205, -791926161, 
-// KEY 3: 1922898138, -449850410, -952489316, 1100854952, 
-// KEY 4: -853028017, 1252797171, 2023208660, 110419214,
     struct PYRA* state = aligned_alloc(32, sizeof(struct PYRA));
-    pyra2_init(state, 0, key);
+    pyra_init(state, 0, key);
 
-    clock_t start, end;
-    start = clock();
+    struct timespec start;
+    struct timespec end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
-    //aes256_encrypt(page, len, key);
-    pyra2_encrypt(state, page, &len);
+    for (int i = 0; i < 1024; i++)
+        pyra_encrypt(state, page, size);
 
-    end = clock();
-    printf("%fs", (double)(end - start) / CLOCKS_PER_SEC);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double time = ((end.tv_sec - start.tv_sec) * 1000.0 + (end.tv_nsec - start.tv_nsec) / 1000000.0) / 1024.0;
+    printf(" [%s] \e[4;37mpyra_encrypt\e[0;0m %fms", 
+        time <= 1 
+        ? "\e[1;32mPASS\e[0;0m" 
+        : "\e[1;31mFAIL\e[0;0m", 
+    time);
 
     return 0;
 }

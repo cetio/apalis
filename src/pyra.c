@@ -20,6 +20,10 @@
 #include <string.h>
 #include <stdio.h>
 
+#define PYRA_SUCCESS 0;
+#define PYRA_UNALIGNED_LEN 1;
+#define PYRA_UNALIGNED_DATA 2;
+
 struct PYRA
 {
     uint64_t seed;
@@ -28,7 +32,7 @@ struct PYRA
     __m256i tau;
 };
 
-void pyra2_sb128(struct PYRA* s)
+void pyra_sb128(struct PYRA* s)
 {
     __m128i mask;
 
@@ -48,7 +52,7 @@ void pyra2_sb128(struct PYRA* s)
     s->phi = _mm_or_si128(_mm_and_si128(mask, lo), _mm_andnot_si128(mask, hi));
 }
 
-void pyra2_sb256(struct PYRA* s)
+void pyra_sb256(struct PYRA* s)
 {
     __m256i mask;
 
@@ -80,7 +84,7 @@ void pyra2_sb256(struct PYRA* s)
     s->tau = _mm256_or_si256(_mm256_and_si256(mask, lo), _mm256_andnot_si256(mask, hi));
 }
 
-void pyra2_invsb128(struct PYRA* s)
+void pyra_invsb128(struct PYRA* s)
 {
     __m128i mask;
 
@@ -100,7 +104,7 @@ void pyra2_invsb128(struct PYRA* s)
     s->phi = _mm_or_si128(_mm_and_si128(mask, hi), _mm_andnot_si128(mask, lo));
 }
 
-void pyra2_invsb256(struct PYRA* s)
+void pyra_invsb256(struct PYRA* s)
 {
     __m256i mask;
 
@@ -130,7 +134,7 @@ void pyra2_invsb256(struct PYRA* s)
     s->tau = _mm256_or_si256(_mm256_and_si256(mask, hi), _mm256_andnot_si256(mask, lo));
 }
 
-void pyra2_init(struct PYRA* s, uint64_t seed, char* key)
+void pyra_init(struct PYRA* s, uint64_t seed, char* key)
 {
     s->seed = seed | 1;
     s->keys[0] = _mm256_loadu_si256((__m256i*)key);
@@ -138,7 +142,7 @@ void pyra2_init(struct PYRA* s, uint64_t seed, char* key)
     s->keys[2] = s->keys[0];
     s->keys[3] = s->keys[0];
 
-    pyra2_sb256(s);
+    pyra_sb256(s);
 
     for (int i = 0; i < 4; i++)
     {
@@ -175,12 +179,16 @@ void pyra2_init(struct PYRA* s, uint64_t seed, char* key)
 // for (int i = 0; i < 4; i++)
 //     printf("%d, ", s->keys[3][i]);
 
-int pyra2_encrypt(struct PYRA* s, uint8_t* data, size_t* len)
+int pyra_encrypt(struct PYRA* s, uint8_t* data, size_t len)
 {
-    if (data == NULL || len == NULL)
-        return 0;
+    //if ((len == 0) || ((len & (len - 1)) != 0))
+    if (len % 32 != 0)
+        return PYRA_UNALIGNED_LEN;
 
-    for (int i = 0; i < (*len / 32); i++)
+    if (data == NULL || ((size_t)data % 32) != 0)
+        return PYRA_UNALIGNED_DATA;
+
+    for (int i = 0; i < (len / 32); i++)
     {
         __m256i v = _mm256_loadu_si256((__m256i*)data + i);
 
@@ -190,7 +198,6 @@ int pyra2_encrypt(struct PYRA* s, uint8_t* data, size_t* len)
         for (int i = 0; i < s->seed % 8; i++)
             v = _mm256_shuffle_epi8(v, s->tau);
 
-        v = _mm256_add_epi64(v, _mm256_set1_epi64x(s->seed));
         v = _mm256_add_epi64(v, s->keys[0]);
         v = _mm256_xor_si256(v, s->keys[3]);
 
@@ -200,7 +207,7 @@ int pyra2_encrypt(struct PYRA* s, uint8_t* data, size_t* len)
         _mm256_storeu_si256((__m256i*)data + i, v);
     }
 
-    return 1;
+    return PYRA_SUCCESS;
 }
 
 /*int decrypt(uint8_t* data, size_t* len, char* key)
