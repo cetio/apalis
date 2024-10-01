@@ -14,11 +14,11 @@
 // since there is a lot of data that could be harvested during both encryption
 // and decryption phases of Pyra-2.
 
-#include "immintrin.h"
 #include <stdlib.h>
-#include <stdint.h>
+#include "types.h"
 #include <string.h>
 #include <stdio.h>
+#include "immintrin.h"
 
 #define PYRA_SUCCESS 0;
 #define PYRA_UNALIGNED_LEN 1;

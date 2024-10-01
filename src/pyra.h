@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "types.h"
 #include "immintrin.h"
 
 #define PYRA_SUCCESS 0;

@@ -1,1 +1,0 @@
-Apalis is a kernel module for Arch Linux intended to offer various security, ease of use, and general purpose functionalities to any distribution.
